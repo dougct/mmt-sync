@@ -1,0 +1,11 @@
+
+ToDo:
+-Avoid code expansion of the post-dominator pass. LLC passes may be the solution.
+-LLVM pass for Structured Control Flow heuristic.
+-Count a cycle per iteration. The heuristic would output parallel groups of threads with same PC instead of a single group of active threads per iteration.
+
+Known problems:
+-Bodytrack does not compile with the newest gcc wrapper, llc outputs an error despite no pass being used.
+-The file "Passes/makefile" always recompiles all passes again, despite there being no changes.
+-A function of the main image may be called by a shared library through function pointer, but no benchmark is doing it.
+-No support to X86-32 bits.

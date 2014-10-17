@@ -1,0 +1,5 @@
+#!/bin/bash 
+
+if [[ `file "$@"` != *'LLVM bitcode'* ]]; then
+    /usr/bin/ranlib "$@"
+fi

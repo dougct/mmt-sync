@@ -1,0 +1,72 @@
+#!/bin/bash
+
+MAIN_FOLDER=$HOME/mmt-sync
+LLVM_DIR=$HOME/llvm
+
+COMPILER=clang++
+#COMPILER=clang
+
+
+PASS=$PASS_NAME
+PASSES_DIR=$MAIN_FOLDER/Passes
+PASS_PARAM='-execute'
+
+
+
+set -e
+
+
+is_linker='true'
+get_out_name='false'
+output_name='*'
+c_cpp_file='*'
+arg_list=''
+
+for arg in "$@"; do
+    if [[ $get_out_name == 'true' ]]; then
+        output_name=$arg
+        get_out_name='false'
+    elif [[ $arg == "-c" ]]; then
+        is_linker='false'
+    elif [[ $arg == "-o" ]]; then
+        get_out_name='true'
+    elif [[ $arg == "-s" ]]; then
+        #Do not strip
+        :
+    else
+        if [[ $c_cpp_file == '*' ]]; then
+            if [[ $arg == *.c ]]; then
+                c_cpp_file=`basename $arg .c`
+            elif [[ $arg == *.cpp ]]; then
+                c_cpp_file=`basename $arg .cpp`
+            fi
+        fi
+        arg_list=$arg_list''$arg' '
+    fi
+done
+
+if [[ $is_linker == 'true' ]]; then
+    if [[ $c_cpp_file != '*' ]]; then
+        echo 'Error: code file in the linker.'
+        exit -1
+    fi
+    set_output_name=''
+    if [[ $output_name != '*' ]]; then
+        set_output_name='-o '$output_name
+    fi
+    $LLVM_DIR/Debug+Asserts/bin/$COMPILER $set_output_name $PASSES_DIR/pragmas.o $arg_list
+else
+    if [[ $output_name == '*' ]]; then
+        if [[ $c_cpp_file == '*' ]]; then
+            echo 'Error: unknown output file.'
+            exit -1
+        fi
+        output_name=$c_cpp_file'.o'
+    fi
+    $LLVM_DIR/Debug+Asserts/bin/$COMPILER -emit-llvm -c -o $output_name.bc $arg_list
+    $LLVM_DIR/Debug+Asserts/bin/opt -simplifycfg -load $LLVM_DIR/Debug+Asserts/lib/$PASS.so $PASS_PARAM  $output_name.bc -o $output_name.bc2
+    $LLVM_DIR/Debug+Asserts/bin/llc $output_name.bc2 -o $output_name.s1
+    $PASSES_DIR/setpragmas < $output_name.s1 > $output_name.s
+    as $output_name.s -o $output_name
+    rm -f $output_name.bc $output_name.bc2 $output_name.s1 $output_name.s
+fi

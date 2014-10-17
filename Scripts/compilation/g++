@@ -1,0 +1,6 @@
+#!/bin/bash 
+
+MAIN_FOLDER=$HOME/mmt-sync
+
+export _CXX_COMPILER_='true'
+$MAIN_FOLDER/Scripts/compilation/gcc "$@"

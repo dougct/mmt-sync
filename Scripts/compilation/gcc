@@ -1,0 +1,152 @@
+#!/bin/bash
+
+MAIN_FOLDER=$HOME/mmt-sync
+LLVM_DIR=$HOME/llvm
+
+if [[ $_CXX_COMPILER_ == 'true' ]]; then
+    COMPILER=clang++
+else
+    COMPILER=clang
+fi
+
+if [ -z $PASS_NAME ]; then
+    echo 'Error: no LLVM pass was set with the variable PASS_NAME.'
+    exit -1
+fi
+PASSES_DIR=$MAIN_FOLDER/Passes
+PASS_PARAM='-execute'
+
+
+set -e
+
+
+is_linker='true'
+get_out_name='false'
+output_name='?'
+c_cpp_file='?'
+arg_list=''
+
+for arg in "$@"; do
+    if [[ $get_out_name == 'true' ]]; then
+        output_name=$arg
+        get_out_name='false'
+    elif [[ $arg == "-c" ]]; then
+        is_linker='false'
+    elif [[ $arg == "-o" ]]; then
+        get_out_name='true'
+    elif [[ $arg == "-s" ]]; then
+        #Do not strip
+        :
+    elif [[ $arg == "-E" ]]; then
+        $LLVM_DIR/Debug+Asserts/bin/$COMPILER "$@"
+        exit
+    elif [[ $arg == "-S" ]]; then
+        echo 'Error: the makefile generates assembly.'
+        exit -1
+    else
+        if [[ $c_cpp_file == '?' ]]; then
+            if [[ $arg == *.c ]]; then
+                c_cpp_file=`basename $arg .c`
+            elif [[ $arg == *.cpp ]]; then
+                c_cpp_file=`basename $arg .cpp`
+            elif [[ $arg == *.cc ]]; then
+                c_cpp_file=`basename $arg .cc`
+            fi
+        fi
+        arg_list=$arg_list''$arg' '
+    fi
+done
+
+if [[ $c_cpp_file != '?' ]]; then
+    ob_name='?'
+    if [[ $is_linker == 'false' ]]; then
+        ob_name=$output_name
+    fi
+    if [[ $ob_name == '?' ]]; then
+        ob_name=$c_cpp_file'.o'
+    fi
+    
+    $LLVM_DIR/Debug+Asserts/bin/$COMPILER -emit-llvm -c -o $ob_name $arg_list
+fi
+
+if [[ $is_linker == 'true' ]]; then
+    
+    if [[ $output_name == '?' ]]; then
+        output_name='a.out'
+    fi
+    
+    static='-static'
+    ofiles_list=''
+    other_args=''
+    elizao='' #-L deve vir antes de -l
+    for arg in $arg_list; do
+        if [[ $arg == *.o ]]; then
+            ofiles_list=$ofiles_list''$arg' '
+        elif [[ $arg == *.a ]]; then
+            ofiles_list=$ofiles_list''$arg' '
+
+        elif [[ $arg == *.c ]]; then
+            ofiles_list=$ofiles_list''`basename $arg .c`'.o '
+        elif [[ $arg == *.cpp ]]; then
+            ofiles_list=$ofiles_list''`basename $arg .cpp`'.o '
+        elif [[ $arg == *.cc ]]; then
+            ofiles_list=$ofiles_list''`basename $arg .cc`'.o '
+
+        elif [[ $arg == '-L'* ]]; then
+            elizao=$elizao''$arg' '
+            other_args=$other_args''$arg' '
+        elif [[ $arg == '-l'* ]]; then
+            if [ $arg == '-lm' ] || [ $arg == '-lpthread' ]; then
+                other_args=$other_args''$arg' '
+            else
+                temp_subvar=${arg:2}
+                temp_subvar='lib'$temp_subvar'.a'
+                achou='false'
+                
+                if [[ ! -f $temp_subvar ]]; then
+                    for link_dir in $elizao; do
+                        link_dir=${link_dir:2}
+                        if [[ -f $link_dir'/'$temp_subvar ]]; then
+                            temp_subvar=$link_dir'/'$temp_subvar
+                            achou='true'
+                            break
+                        fi
+                    done
+                else
+                    achou='true'
+                fi
+                
+                if [[ $achou == 'true' ]]; then
+                    ofiles_list=$ofiles_list''$temp_subvar' '
+                else
+                    static=''
+                    other_args=$other_args''$arg' '
+                fi
+            fi
+        else
+            other_args=$other_args''$arg' '
+        fi
+    done
+    if [[ $ofiles_list == '' ]]; then
+        echo 'Error: no object file to the linker.'
+        exit -1
+    fi
+    
+    $LLVM_DIR/Debug+Asserts/bin/llvm-link -o $output_name.bc $ofiles_list
+    echo "==================="
+    echo "Running Custom Pass"
+    echo "==================="
+    export PATH=$PATH:/home/douglas/llvm/Debug+Asserts/bin
+    $LLVM_DIR/Debug+Asserts/bin/opt -mem2reg -simplifycfg -stats -load $LLVM_DIR/Debug+Asserts/lib/$PASS_NAME.so -load $LLVM_DIR/Debug+Asserts/lib/LLVMFunctionFusion.so $PASS_PARAM -func-fusion $output_name.bc -o $output_name.bc2
+    #$LLVM_DIR/Debug+Asserts/bin/opt -mem2reg -simplifycfg -stats -load $LLVM_DIR/Debug+Asserts/lib/$PASS_NAME.so $PASS_PARAM $output_name.bc -o $output_name.bc2
+    echo "LLC"
+    $LLVM_DIR/Debug+Asserts/bin/llc $output_name.bc2 -o $output_name.s1
+    #$LLVM_DIR/Debug+Asserts/bin/llc canneal.ll -o $output_name.s1
+    #$PASSES_DIR/setpragmas < $output_name.s1 > $output_name.s
+    as $output_name.s -o $output_name.oo
+    
+    $LLVM_DIR/Debug+Asserts/bin/$COMPILER -lpthread -o $output_name $output_name.oo $PASSES_DIR/pragmas.o $other_args $static
+    
+    #rm -f $output_name.bc $output_name.bc2 $output_name.s1 $output_name.s $output_name.oo
+    
+fi

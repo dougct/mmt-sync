@@ -1,0 +1,23 @@
+# Makefile for hello pass
+
+# Path to top level of LLVM hierarchy
+#LEVEL = $(shell echo $$HOME)/LLVM
+LEVEL = ../../..
+
+# Name of the library to build
+LIBRARYNAME = $(SPECIFIC)
+
+# Make the shared library become a loadable module so the tools can 
+# dlopen/dlsym on the resulting library.
+LOADABLE_MODULE = 1
+USEDLIBS =
+
+
+ifneq ($(REQUIRES_RTTI), 1)
+ifneq ($(REQUIRES_EH), 1)
+#EXPORTED_SYMBOL_FILE = $(PROJ_SRC_DIR)/Hello.exports
+endif
+endif
+
+# Include the makefile implementation stuff
+include $(LEVEL)/Makefile.common 

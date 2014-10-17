@@ -1,0 +1,24 @@
+#!/bin/bash 
+
+MAIN_FOLDER=$HOME/mmt-sync
+LLVM_DIR=$HOME/llvm
+
+PASS=$PASS_NAME
+PASSES_DIR=$MAIN_FOLDER/Passes
+PASS_PARAM='-execute'
+
+set -e
+
+ofiles_list=''
+other_args=''
+for arg in "$@"; do
+    if [[ $arg == *.o ]]; then
+        ofiles_list=$ofiles_list''$arg' '
+    elif [[ $arg == *.a ]]; then
+        output_name=$arg
+    else
+        other_args=$other_args''$arg' '
+    fi
+done
+
+$LLVM_DIR/Debug+Asserts/bin/llvm-link -o $output_name $ofiles_list
