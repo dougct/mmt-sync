@@ -34,54 +34,61 @@ We do not use PARSEC's tool to compile the benchmarks. Instead, we run custom co
 
 The are custom commands to replace calls to GCC and G++ are all in _mmt-sync/Scripts/compilation_.
 
+### Setting Variables
 
-In order to run the scripts, edit the files in _Scripts/compilation_ and set `MAIN_FOLDER` to where our framework is located and set `LLVM_DIR` to the folder where LLVM is located.
+There are several scripts under _mmt-sync/Scripts/_ and you should set a couple of variables for them to work.
+
+  - `MAIN_FOLDER`: where your framework is located (usually, something like /home/user/mmt-sync) to where our framework is located   - `LLVM_DIR`: this one should point to the folder where LLVM was compiled
+  - `OUT_DIR`: where the executable files will be stored
+  - `THIS_DIR`: folder with the scripts
+  - `MMT_SYNC`: also the folder where the framework is located
 
 
-We have a special script to compile all benchmarks we used. The script is _Scripts/comp/recomp.sh_. Open this script and set the variables to the folder where the sources (PARSEC, SPLASH and TACHYON) are. 
+## Recompiling the Benchmarks
 
-Set the other variables as well: OUT_DIR is where all executable files will be, THIS_DIR is the folder where the script and MMT_SYNC is the folder of our framework.
+We have a special script to compile all the benchmarks we used. The script is _Scripts/comp/recomp.sh_. Open it script and set the variables to the folder where the sources (PARSEC, SPLASH and TACHYON) are. 
 
 Edit the script to choose if you want to compile them with FunctionLevel or PostDom LLVM passes. The second pass is required to execute Post-dominator heuristics.
 
-We ran into problems compiling some benchmarks. Thus, be aware that it is not an easy task. The two biggest problems we found are:
+## Compilation Problems
+
+We ran into problems compiling some benchmarks. Thus, be aware that it is not an easy task. For instance:
 
   - to compile blackscholes you need to add "M4 = m4" to the makefile
   - to compile bodytrack you need to do export "VPATH=.".
 
 
-## Execution of experiments
+## Experiments
 
-To execute the experments use the scripts in the folder 'Scripts':
+To execute the experments, use the scripts in the folder _Scripts_:
 
- - -benchmarks.sh:- contains the commands we need to execute each benchmark. The variable BENCHMARKS is the folder where all executable files are, and BENCH_INPUT is the folder where the input of the benchmarks is.
+  - `benchmarks.sh`: contains the commands we need to execute each benchmark. The variable `BENCHMARKS` is the folder where all executable files are, and `BENCH_INPUT` is the folder where the input of the benchmarks is.
 
- - -exec_bench.sh:- executes all heuristics. Make sure to run them on a free HDD partition because it takes a long time, the temporary files are huge, and the HDD will be busy slowing down the system. Remember to set the variables MAIN_FOLDER and PIN_DIR.
+ - `exec_bench.sh`: executes all heuristics. Make sure you run them on a free HDD partition because it takes a long time, the temporary files are huge, and the HDD will be busy, thus slowing down the system. Remember to set the variables `MAIN_FOLDER` and `PIN_DIR`.
 
- - -exec_mem.sh:- is another intensive experiment. It uses the best heuristics to analyse memory access patterns, execute-identical instructions and perform other analysis. Set MAIN_FOLDER and PIN_DIR too.
+ - `exec_mem.sh`: is another intensive experiment. It uses the best heuristics to analyse memory access patterns, execute-identical instructions and perform other analysis. Set `MAIN_FOLDER` and `PIN_DIR` too.
 
 
-## Adding new heuristics
+## Adding New Heuristics
 
-To create a new heuristic, add a .cpp file to the folder -Heuristic/src-. Create a subclass of the class -Heuristic- and implement the function -choose_threads()-. Each call of this function is an iteration, the function should set the boolean array of threads -t[i].is_active- to say if each thread will execute or will not. 
+To create a new heuristic, add a .cpp file to the folder _Heuristic/src_. Create a subclass of the class _Heuristic_ and implement the function `choose_threads()`. Each call of this function is an iteration, the function should set the boolean array of threads `t[i].is_active` to say if each thread will execute or will not. 
 
-Next, implement the functions -new_heuristic- and -delete_heuristic- to create and delete your heuristic object. Finally, add a file to the -info- folder to tell the type of binaries that the heuristic requires ('HardwareOnly', 'FunctionLimit', 'PostDominator', 'Structured').
+Next, implement the functions `new_heuristic` and `delete_heuristic` to create and delete your heuristic object. Finally, add a file to the _info_ folder to tell the type of binaries that the heuristic requires ('HardwareOnly', 'FunctionLimit', 'PostDominator', 'Structured').
 
 ## Directory structure
-   - -Execute-: Folder with the main program that will execute a heuristic and do analysis. The command is:
+   - _Execute_: Folder with the main program that will execute a heuristic and do analysis. The command is:
 
-              ./heuristic mode P heuristic_file "heuristic parameters" thread_file_1 thread_file_2 thread_file_3 ...
+       `./heuristic mode P heuristic_file "heuristic parameters" thread_file_1 thread_file_2 thread_file_3`
 
- The heuristic parameters must be between "" and the mode is 0 to print all analysis or 1 to print the number of fetched instructions.
- P is the number of fetch units to be used in opportunistic SIMD simulation. The default value is 0, which means the maximum value.
+ The heuristic parameters must be between "" and the mode is 0 to print all analysis or 1 to print the number of fetched instructions. P is the number of fetch units to be used in opportunistic SIMD simulation. The default value is 0, which means the maximum value.
 
-   - -Heuristics-: Folder with each heuristic. The makefile will compile all heuristics. The -parameters- folder has a list of parameters that the heuristics receive when a script is executed. Each line of those files is a parameter. The -info- directory tells the type of binaries that the heuristic requires ('HardwareOnly', 'FunctionLimit', 'PostDominator', 'Structured').
+   - _Heuristics_: Folder with each heuristic. The makefile will compile all heuristics. The _parameters_ folder has a list of parameters that the heuristics receive when a script is executed. Each line of those files is a parameter. The _info_ directory tells the type of binaries that the heuristic requires ('HardwareOnly', 'FunctionLimit', 'PostDominator', 'Structured').
 
-   - -Tools-: Folder with tool for PIN. -insConuter- counts statistics of the benchmarks: number of instructions of each thread, number of calls and returns, and so on. The tool -insList- prints each instruction address in each thread.
+   - _Tools_: Folder with the Pin tool. `insConuter` counts statistics of the benchmarks: number of instructions of each thread, number of calls and returns, and so on. The tool `insList` prints each instruction address in each thread.
 
-   - -Passes-: Folder with LLVM passes. Each folder is a pass and the makefile will compile them all. Edit the makefile to set the directory where LLVM is installed.
+   - _Passes_: Folder with LLVM passes. Each folder is a pass and the makefile will compile them all. Edit the makefile to set the directory where LLVM is installed.
 
-   - -Scripts-: Folder with helper scripts.
+   - _Scripts_: Folder with helper scripts.
 
-   - -mini-: Folder with the [gallery minibenchmarks]. Compile them by using the command -make-.
+   - _mini_: Folder with some small handcrafted benchmarks. Compile them by using the command `make`.
    
