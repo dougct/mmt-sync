@@ -4,22 +4,13 @@
 # PARSEC and SPLASH. Basically, we have to create a custom call to run the
 # benchmark and then run it under Pin.
 
-#-----------------------------------------------
-#BENCHMARKS
-#-----------------------------------------------
-
-BENCHMARKS=$HOME'/parsec-3.0/pkgs/apps'
-#BENCH_INPUT='/home/douglas/parsec-3.0/pkgs/apps/blackscholes/inputs'
-#BENCH_BIN='/home/douglas/parsec-3.0/pkgs/apps/blackscholes/inst/amd64-linux.gcc/bin'
+#-----------------
+# Helper functions
+#-----------------
 
 # A whitespace separated list with the name of the benchmarks we will execute.
 bench_list='canneal'
 
-function start_bench {
-    $1 $2
-}
-
-NUL='/dev/null'
 
 function mv_zero {
     if [[ -e instru0.txt ]]; then
@@ -27,17 +18,19 @@ function mv_zero {
     fi
 }
 
-#-----------------------------------------------
-#PARSEC
-#-----------------------------------------------
 
-# In these functions, `command` is the command line to run the benchmark.
+# In the functions below, `command` is the command line to run the benchmark.
 # After running it, we run it again under Pin. The Pin tool requires the
 # mangled name of the function that is the entry point of the threads.
 # There can be more than one of these functions in the program, but we
 # only test one of them. You can find the name of this function by looking
 # at the source code for the function being passed as a parameter to pthread_create,
 # and then use objdump -t func-name | grep func-name.
+
+#------------------
+# PARSEC Benchmarks
+#------------------
+
 
 function blackscholes {
     command='/home/douglas/parsec-3.0/pkgs/apps/blackscholes/src/blackscholes '$1' /home/douglas/parsec-3.0/pkgs/apps/blackscholes/inputs/in_4K.txt prices.txt'
@@ -64,4 +57,14 @@ function canneal {
     exec_pin _ZN15annealer_thread3RunEv "$command"
 }
 
+
+#------------------
+# SPLASH Benchmarks
+#------------------
+
+function fft {
+    comando='/home/douglas/parsec-3.0/ext/splash2/kernels/fft/src/fft -p'$1' -m20 -n131072 -l8'
+    exec_pin SlaveStart "$comando"
+    mv_zero $1
+}
 
